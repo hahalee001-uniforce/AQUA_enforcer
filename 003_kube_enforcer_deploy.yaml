@@ -35,7 +35,7 @@ spec:
       containers:
         - name: kube-enforcer
           image: reg.lab.uniforce.com.tw/aqua-registry/kube-enforcer:2022.4
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
               path: /healthz
