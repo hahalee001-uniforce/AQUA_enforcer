@@ -1,0 +1,474 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aqua-csp-kube-enforcer
+  namespace: aqua
+data:
+  # Specify whether to enable/disable the cache by using "yes", "true", "no", "false" values.
+  # Default value is "yes".
+  AQUA_ENABLE_CACHE: "yes"
+  # Specify cache expiration period in seconds.
+  # Default value is 60
+  AQUA_CACHE_EXPIRATION_PERIOD: "60"
+  TLS_SERVER_CERT_FILEPATH: "/certs/aqua_ke.crt"
+  TLS_SERVER_KEY_FILEPATH: "/certs/aqua_ke.key"
+  ## Based on your ingress config update the name here ##
+  AQUA_GATEWAY_SECURE_ADDRESS: "aqua-gateway.aqua:8443"
+  AQUA_TLS_PORT: "8443"
+  AQUA_LOGICAL_NAME: ""
+  # Cluster display name in aqua enterprise.
+  CLUSTER_NAME: "Default-cluster-name"
+  # Enable KA policy scanning via starboard
+  AQUA_KAP_ADD_ALL_CONTROL: "true"
+  AQUA_WATCH_CONFIG_AUDIT_REPORT: "true"
+  AQUA_KB_IMAGE_NAME: "aquasec/kube-bench:v0.6.8"
+  AQUA_ME_IMAGE_NAME: "registry.aquasec.com/microenforcer:2022.4.71"
+  AQUA_KB_ME_REGISTRY_NAME: "aqua-registry"
+  AQUA_ENFORCER_DS_NAME: "aqua-agent"               #Sets Daemonset name
+  # Enable the below Env for mTLS between kube-enforcer and gateway
+  # AQUA_PUBLIC_KEY: "/opt/aquasec/ssl/aqua_kube-enforcer.crt"
+  # AQUA_PRIVATE_KEY: "/opt/aquasec/ssl/aqua_kube-enforcer.key"
+  # AQUA_ROOT_CA: "/opt/aquasec/ssl/rootCA.crt"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: kube-enforcer-admission-hook-config
+  namespace: aqua
+webhooks:
+  - name: imageassurance.aquasec.com
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["*"]
+        apiVersions: ["*"]
+        resources:
+          - pods
+          - deployments
+          - replicasets
+          - replicationcontrollers
+          - statefulsets
+          - daemonsets
+          - jobs
+          - cronjobs
+          - configmaps
+          - services
+          - roles
+          - rolebindings
+          - clusterroles
+          - clusterrolebindings
+          - customresourcedefinitions
+    clientConfig:
+      # Please follow instruction in document to generate new CA cert
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZEekNDQXZlZ0F3SUJBZ0lVRFRhMXRPZUt2TWRNTjJtN2NQamZmMVN6Um1Bd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0Z6RVZNQk1HQTFVRUF3d01ZV1J0YVhOemFXOXVYMk5oTUI0WERUSXlNRGN5TURBMk16YzBNbG9YRFRJMQpNRFV3T1RBMk16YzBNbG93RnpFVk1CTUdBMVVFQXd3TVlXUnRhWE56YVc5dVgyTmhNSUlDSWpBTkJna3Foa2lHCjl3MEJBUUVGQUFPQ0FnOEFNSUlDQ2dLQ0FnRUF6RjFXcmsyOE1rSEpVSmxTQTliemgrbnhaYkFocmU1SS9PNlUKUmdpcHRvSU92ejdSM0JpcDArSTVuRk5scFJYTy84Z3hPNXNkTW9KMm5Wc0hjWEZ5MlBMbGtEdDZ3OC9iT211ZApBN0ZZampnUElEYk0ybnN0U0U5cU9oSGJ5YWhjcVN5TXk0WUJOdGxOaDdGZlZhQmRyT0ZpaXRmNFZFRGtTTkx6Ck5MYi9DZEd2UTIwZnZnY08zR2JWVXc3TDNYYzBtSTBCRUVIRXgvZk10d3IzbGhnSmc2RTdwNTFUbjVyN1kvNWYKODdrenZnNU41b0dicEtsS0d3RWhBREt4ZHpIZFhIcWl2VDY2em85U1pndjRsSFBnb1hNKzZFcm9DenRyMkZsRQpUbVE3N3kyRlhwam56UzdJZXM1SEZjNjQxUnJxZGJCcDdqUUVpdEVZZ3ZmVXF2YkJWRFRzaVVMQjFXbG0yVlhVCmhnbERPTmMzUjZEd2YwTU5Hb0dEOGcwWTZNVzZIczR4bmtteHArZnJ5QlYvYW9HNmY1enBKVC9qYXBMRVY2R04KWllnNnRJYUtMRWRiV05TM2IrS0ZuODRaNjNBSlpoc2tEZkhvRVo4RHoxVVhndmNzQ2daWi9CbCtKdGlja3dDSApaOTd4ZmUyTnJHcit4UHZFaDBTTEIvd0Rla3JHdmVaUm1tV00wN1VYaWFmOVVVSlQ3MUhzT2lOZXhIUU5jS0tzCjk2ZEhvejNvS2ZteDdXTTE4WjJheGJkU0hEOWJUSC8zVllidVZPb0lVNlBLYXZLZ2Jkb09zYmlZSFAxRCs5K00KamFTdWMydW5LUkFsR3YxQXVxU0F4OVU5ZVhjKzlKNXg4WCtmUjlSY1RmVHIxQmRmazVCVVFvTCtlbmluQUZYZwpYK3RNcGNrQ0F3RUFBYU5UTUZFd0hRWURWUjBPQkJZRUZGaE1xVzhXZmRySDZ6cm9DYVBEUWpoQzh6S1lNQjhHCkExVWRJd1FZTUJhQUZGaE1xVzhXZmRySDZ6cm9DYVBEUWpoQzh6S1lNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHcKRFFZSktvWklodmNOQVFFTEJRQURnZ0lCQUJPc2p1SUVHREJBcHp2cXIvbCtjcVdxZE4xS050S1AvbGN6N0JScApkOXVpakdHT1krWWlEMVhXRDhjaHA5aHRndGdweENoSVJWakpHd01qN203QnpEMDg2c0F5RldlcENWTUNvVTJkCmh0ZjdrK2JWYzVpKy9haFNxU3BNNDhCdE50V2d1NTJ3UzBJeXAwTVBmZEEvdXl4d3JGUXlMcDFTakVXNzFCRmEKL2hOdmZCWjZadllZV1ZoMmxwOEVIaHpXTHpQNEIyM05xdGF3cU1HZkdYYzdIMUVYK0E0UlFIL3BncEFvREF2bQp4SlJvTE1WRDFVM1owRkFwT25FQ3pQNmJ6aWZhcWVpZ0drenpRczRWZlFVc3lZOFBRNjhrcXFxcDNrRTROYzNYCmRvRDVFcGlUd0llZUp2ZUJQZlhGUG9mOStidUNkUG45TTJtSzZDRTBWeXp4UjlPb2d5NHBSVHV0SVVVNWo5U3gKVTNheHBmbHUraGRDakxsRXJaN0dqbkxDbG1wdS9pSEtMekdGSFlFeXRqMEFhdUMvQ3dpazlTNGpzNTZwYzhDdgpJelZuRjNXK1ZkOHdjSGMvdFBML1hRTW5EaFFCT2E1Z3FPRlF5aTFHVC9nL3MwTVNDckV6ZEcwdTNNSXlwMUhqClg0ZjFWQUVVM1VzTmN0Z3hKRnh1S2pqbjl0TnNoZGJXM2JFd01KN3d1NUlHSmo1K0U4TzFWaGQvSVNxOURIK2sKdjRsamFLVmVCc2xJYllJUFh4dnRCVWdiLzl2VmhudmRDYlJnMmNQVWxQemlsaUtWcXo2Q2ZUc0ZIUEJTazBBawozUVRrOWlRQWR6RHJnQVIzeUJIMnVxZitBWE15L1pib1BSMGw1Nit1Q1JyZHgzRnBkT1o1ZFA0L2hzV0Z0Y05XCmE4c2gKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      service:
+        namespace: aqua
+        name: aqua-kube-enforcer
+    timeoutSeconds: 5
+    failurePolicy: Ignore
+    admissionReviewVersions: ["v1beta1"]
+    sideEffects: "None"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: kube-enforcer-me-injection-hook-config
+  namespace: aqua
+webhooks:
+  - name: microenforcer.aquasec.com
+    clientConfig:
+      service:
+        name: aqua-kube-enforcer
+        namespace: aqua
+        path: "/mutate"
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZEekNDQXZlZ0F3SUJBZ0lVRFRhMXRPZUt2TWRNTjJtN2NQamZmMVN6Um1Bd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0Z6RVZNQk1HQTFVRUF3d01ZV1J0YVhOemFXOXVYMk5oTUI0WERUSXlNRGN5TURBMk16YzBNbG9YRFRJMQpNRFV3T1RBMk16YzBNbG93RnpFVk1CTUdBMVVFQXd3TVlXUnRhWE56YVc5dVgyTmhNSUlDSWpBTkJna3Foa2lHCjl3MEJBUUVGQUFPQ0FnOEFNSUlDQ2dLQ0FnRUF6RjFXcmsyOE1rSEpVSmxTQTliemgrbnhaYkFocmU1SS9PNlUKUmdpcHRvSU92ejdSM0JpcDArSTVuRk5scFJYTy84Z3hPNXNkTW9KMm5Wc0hjWEZ5MlBMbGtEdDZ3OC9iT211ZApBN0ZZampnUElEYk0ybnN0U0U5cU9oSGJ5YWhjcVN5TXk0WUJOdGxOaDdGZlZhQmRyT0ZpaXRmNFZFRGtTTkx6Ck5MYi9DZEd2UTIwZnZnY08zR2JWVXc3TDNYYzBtSTBCRUVIRXgvZk10d3IzbGhnSmc2RTdwNTFUbjVyN1kvNWYKODdrenZnNU41b0dicEtsS0d3RWhBREt4ZHpIZFhIcWl2VDY2em85U1pndjRsSFBnb1hNKzZFcm9DenRyMkZsRQpUbVE3N3kyRlhwam56UzdJZXM1SEZjNjQxUnJxZGJCcDdqUUVpdEVZZ3ZmVXF2YkJWRFRzaVVMQjFXbG0yVlhVCmhnbERPTmMzUjZEd2YwTU5Hb0dEOGcwWTZNVzZIczR4bmtteHArZnJ5QlYvYW9HNmY1enBKVC9qYXBMRVY2R04KWllnNnRJYUtMRWRiV05TM2IrS0ZuODRaNjNBSlpoc2tEZkhvRVo4RHoxVVhndmNzQ2daWi9CbCtKdGlja3dDSApaOTd4ZmUyTnJHcit4UHZFaDBTTEIvd0Rla3JHdmVaUm1tV00wN1VYaWFmOVVVSlQ3MUhzT2lOZXhIUU5jS0tzCjk2ZEhvejNvS2ZteDdXTTE4WjJheGJkU0hEOWJUSC8zVllidVZPb0lVNlBLYXZLZ2Jkb09zYmlZSFAxRCs5K00KamFTdWMydW5LUkFsR3YxQXVxU0F4OVU5ZVhjKzlKNXg4WCtmUjlSY1RmVHIxQmRmazVCVVFvTCtlbmluQUZYZwpYK3RNcGNrQ0F3RUFBYU5UTUZFd0hRWURWUjBPQkJZRUZGaE1xVzhXZmRySDZ6cm9DYVBEUWpoQzh6S1lNQjhHCkExVWRJd1FZTUJhQUZGaE1xVzhXZmRySDZ6cm9DYVBEUWpoQzh6S1lNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHcKRFFZSktvWklodmNOQVFFTEJRQURnZ0lCQUJPc2p1SUVHREJBcHp2cXIvbCtjcVdxZE4xS050S1AvbGN6N0JScApkOXVpakdHT1krWWlEMVhXRDhjaHA5aHRndGdweENoSVJWakpHd01qN203QnpEMDg2c0F5RldlcENWTUNvVTJkCmh0ZjdrK2JWYzVpKy9haFNxU3BNNDhCdE50V2d1NTJ3UzBJeXAwTVBmZEEvdXl4d3JGUXlMcDFTakVXNzFCRmEKL2hOdmZCWjZadllZV1ZoMmxwOEVIaHpXTHpQNEIyM05xdGF3cU1HZkdYYzdIMUVYK0E0UlFIL3BncEFvREF2bQp4SlJvTE1WRDFVM1owRkFwT25FQ3pQNmJ6aWZhcWVpZ0drenpRczRWZlFVc3lZOFBRNjhrcXFxcDNrRTROYzNYCmRvRDVFcGlUd0llZUp2ZUJQZlhGUG9mOStidUNkUG45TTJtSzZDRTBWeXp4UjlPb2d5NHBSVHV0SVVVNWo5U3gKVTNheHBmbHUraGRDakxsRXJaN0dqbkxDbG1wdS9pSEtMekdGSFlFeXRqMEFhdUMvQ3dpazlTNGpzNTZwYzhDdgpJelZuRjNXK1ZkOHdjSGMvdFBML1hRTW5EaFFCT2E1Z3FPRlF5aTFHVC9nL3MwTVNDckV6ZEcwdTNNSXlwMUhqClg0ZjFWQUVVM1VzTmN0Z3hKRnh1S2pqbjl0TnNoZGJXM2JFd01KN3d1NUlHSmo1K0U4TzFWaGQvSVNxOURIK2sKdjRsamFLVmVCc2xJYllJUFh4dnRCVWdiLzl2VmhudmRDYlJnMmNQVWxQemlsaUtWcXo2Q2ZUc0ZIUEJTazBBawozUVRrOWlRQWR6RHJnQVIzeUJIMnVxZitBWE15L1pib1BSMGw1Nit1Q1JyZHgzRnBkT1o1ZFA0L2hzV0Z0Y05XCmE4c2gKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["*"]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    timeoutSeconds: 5
+    failurePolicy: Ignore
+    admissionReviewVersions: ["v1beta1"]
+    sideEffects: "None"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aqua-kube-enforcer-sa
+  namespace: aqua
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aqua-kube-enforcer
+rules:
+  - apiGroups: ["*"]
+    resources: ["pods", "nodes", "namespaces", "deployments", "jobs", "cronjobs", "daemonsets", "replicasets", "replicationcontrollers", "statefulsets", "clusterroles", "clusterrolebindings", "componentstatuses", "services" ]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [ "*" ]
+    resources: [ "secrets" ]
+    verbs: [ "get", "list", "watch", "update", "create", "delete"]
+  - apiGroups: ["aquasecurity.github.io"]
+    resources: ["configauditreports", "clusterconfigauditreports"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["*"]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "update", "create"]
+  - apiGroups:
+      - "*"
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "*"
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aqua-kube-enforcer
+  namespace: aqua
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aqua-kube-enforcer
+subjects:
+  - kind: ServiceAccount
+    name: aqua-kube-enforcer-sa
+    namespace: aqua
+---
+# This role specific to kube-bench scans permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aqua-kube-enforcer
+  namespace: aqua
+rules:
+  - apiGroups: ["*"]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["*"]
+    resources: ["jobs"]
+    verbs: ["create", "delete"]
+  - apiGroups: ["*"]
+    resources: ["pods"]
+    verbs: ["create", "delete"]
+  - apiGroups: ["*"]
+    resources: ["leases"]
+    verbs: ["get", "list", "create", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aqua-kube-enforcer
+  namespace: aqua
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: aqua-kube-enforcer
+subjects:
+- kind: ServiceAccount
+  name: aqua-kube-enforcer-sa
+  namespace: aqua
+---
+# Starboard resource yamls################
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: configauditreports.aquasecurity.github.io
+  labels:
+    app.kubernetes.io/managed-by: starboard
+    app.kubernetes.io/version: "0.15.4"
+spec:
+  group: aquasecurity.github.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - jsonPath: .report.scanner.name
+          type: string
+          name: Scanner
+          description: The name of the config audit scanner
+        - jsonPath: .metadata.creationTimestamp
+          type: date
+          name: Age
+          description: The age of the report
+        - jsonPath: .report.summary.criticalCount
+          type: integer
+          name: Critial
+          priority: 1
+          description: The number of failed checks with critial severity
+        - jsonPath: .report.summary.highCount
+          type: integer
+          name: High
+          priority: 1
+          description: The number of failed checks with high severity
+        - jsonPath: .report.summary.mediumCount
+          type: integer
+          name: Medium
+          priority: 1
+          description: The number of failed checks with medium severity
+        - jsonPath: .report.summary.lowCount
+          type: integer
+          name: Low
+          priority: 1
+          description: The number of failed checks with low severity
+      schema:
+        openAPIV3Schema:
+          x-kubernetes-preserve-unknown-fields: true
+          type: object
+  scope: Namespaced
+  names:
+    singular: configauditreport
+    plural: configauditreports
+    kind: ConfigAuditReport
+    listKind: ConfigAuditReportList
+    categories: []
+    shortNames:
+      - configaudit
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterconfigauditreports.aquasecurity.github.io
+  labels:
+    app.kubernetes.io/managed-by: starboard
+spec:
+  group: aquasecurity.github.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - jsonPath: .report.scanner.name
+          type: string
+          name: Scanner
+          description: The name of the config audit scanner
+        - jsonPath: .metadata.creationTimestamp
+          type: date
+          name: Age
+          description: The age of the report
+        - jsonPath: .report.summary.dangerCount
+          type: integer
+          name: Danger
+          priority: 1
+          description: The number of checks that failed with Danger status
+        - jsonPath: .report.summary.warningCount
+          type: integer
+          name: Warning
+          priority: 1
+          description: The number of checks that failed with Warning status
+        - jsonPath: .report.summary.passCount
+          type: integer
+          name: Pass
+          priority: 1
+          description: The number of checks that passed
+      schema:
+        openAPIV3Schema:
+          x-kubernetes-preserve-unknown-fields: true
+          type: object
+  scope: Cluster
+  names:
+    singular: clusterconfigauditreport
+    plural: clusterconfigauditreports
+    kind: ClusterConfigAuditReport
+    listKind: ClusterConfigAuditReportList
+    categories: []
+    shortNames:
+      - clusterconfigaudit
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: starboard-operator
+  namespace: aqua
+imagePullSecrets:
+  - name: aqua-registry
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: starboard
+  namespace: aqua
+data:
+  configAuditReports.scanner: Conftest
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: starboard
+  namespace: aqua
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: starboard-policies-config
+  namespace: aqua
+  labels:
+    app.kubernetes.io/name: starboard-operator
+    app.kubernetes.io/instance: starboard-operator
+    app.kubernetes.io/version: "0.15.4"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: starboard-operator
+  namespace: aqua
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+      - replicationcontrollers
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+      - serviceaccounts
+      - resourcequotas
+      - limitranges
+    verbs:
+      - list
+      - watch
+      - get
+      - create
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+      - statefulsets
+      - daemonsets
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - create
+      - delete
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - networkpolicies
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - policy
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - aquasecurity.github.io
+    resources:
+      - vulnerabilityreports
+      - configauditreports
+      - clusterconfigauditreports
+      - ciskubebenchreports
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: starboard-operator
+  namespace: aqua
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: starboard-operator
+subjects:
+  - kind: ServiceAccount
+    name: starboard-operator
+    namespace: aqua
+    
